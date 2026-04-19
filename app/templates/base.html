@@ -14,6 +14,12 @@
       <a href="/scan">SCANNER</a>
       <a href="/pentest">PENTEST</a>
       <a href="/results">RESULTS</a>
+      {% if session.get('logged_in') %}
+      <span style="color:var(--muted);margin-left:24px;font-size:12px;">
+        [ {{ session.get('username') }} ]
+      </span>
+      <a href="/logout" style="color:var(--red);margin-left:16px;">LOGOUT</a>
+      {% endif %}
     </div>
   </nav>
   <div class="container">

@@ -1,26 +1,31 @@
 from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_socketio import emit
-from app import socketio
+from app import socketio, limiter
 from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
 from app.scanner import run_pentest
 from app.scanner import generate_pdf_report, save_json_report, list_reports
+from app.auth import login_required
 import threading
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @main.route('/scan')
+@login_required
 def scan():
     return render_template('scan.html')
 
 @main.route('/pentest')
+@login_required
 def pentest():
     return render_template('pentest.html')
 
 @main.route('/results')
+@login_required
 def results():
     reports = list_reports()
     return render_template('results.html', reports=reports)
@@ -57,6 +62,8 @@ def handle_scan(data):
     t.start()
 
 @main.route('/api/pentest', methods=['POST'])
+@login_required
+@limiter.limit("10 per minute")
 def api_pentest():
     data = request.get_json()
     target_url = data.get('url', '')
@@ -66,6 +73,7 @@ def api_pentest():
     return jsonify(results)
 
 @main.route('/api/report/pdf', methods=['POST'])
+@login_required
 def api_pdf_report():
     data = request.get_json()
     if not data:
@@ -79,6 +87,7 @@ def api_pdf_report():
         return jsonify({"error": str(e)}), 500
 
 @main.route('/api/report/json', methods=['POST'])
+@login_required
 def api_json_report():
     data = request.get_json()
     if not data:
@@ -92,10 +101,13 @@ def api_json_report():
         return jsonify({"error": str(e)}), 500
 
 @main.route('/api/reports', methods=['GET'])
+@login_required
 def api_list_reports():
     return jsonify(list_reports())
 
 @main.route('/api/cve', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
 def api_cve():
     data = request.get_json()
     keyword = data.get('keyword', '')
