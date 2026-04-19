@@ -21,21 +21,13 @@
         </select>
       </div>
       <div class="form-group" id="custom-range-group" style="display:none;">
-        <label>Custom range (e.g. 8000-9000)</label>
+        <label>Custom range</label>
         <input type="text" id="custom-range" class="form-control" placeholder="8000-9000">
-      </div>
-      <div class="form-group">
-        <label>Scan mode</label>
-        <select id="scan-mode" class="form-control">
-          <option value="basic">Basic (fast)</option>
-          <option value="nmap">Nmap + service detection</option>
-          <option value="full">Full + CVE lookup</option>
-        </select>
       </div>
       <button class="btn btn-primary" id="scan-btn" style="width:100%;" onclick="startScan()">
         RUN SCAN
       </button>
-      <button class="btn btn-danger" id="stop-btn" style="width:100%;margin-top:10px;display:none;" onclick="stopScan()">
+      <button class="btn btn-danger" id="stop-btn" style="width:100%;margin-top:10px;display:none;">
         STOP
       </button>
     </div>
@@ -43,8 +35,13 @@
 
   <div>
     <div class="card">
-      <div class="card-title">Live output <span class="cursor" id="cursor-indicator" style="display:none;"></span></div>
-      <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+      <div class="card-title">
+        Live output
+        <span class="cursor" id="cursor-indicator" style="display:none;"></span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+      </div>
       <div class="terminal" id="scan-output">[*] Waiting for scan target...<br></div>
     </div>
 
@@ -82,35 +79,39 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script>
 const socket = io();
-let scanning = false;
 
 document.getElementById('port-range').addEventListener('change', function() {
   document.getElementById('custom-range-group').style.display =
     this.value === 'custom' ? 'block' : 'none';
 });
 
-function log(msg, cls='') {
+socket.on('scan_log', function(data) {
   const term = document.getElementById('scan-output');
   const div = document.createElement('div');
-  div.className = cls;
-  div.innerHTML = msg;
+  div.className = data.cls || '';
+  div.textContent = data.msg;
   term.appendChild(div);
   term.scrollTop = term.scrollHeight;
-}
+});
 
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['ports','vulns','risk'][i] === name);
-  });
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-}
+socket.on('scan_progress', function(data) {
+  document.getElementById('progress').style.width = data.value + '%';
+});
 
-function getBadge(sev) {
-  const s = (sev||'').toUpperCase();
-  const map = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
-  return `<span class="badge ${map[s]||'badge-info'}">${s}</span>`;
-}
+socket.on('scan_complete', function(data) {
+  document.getElementById('cursor-indicator').style.display = 'none';
+  document.getElementById('scan-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+
+  if (data.error) return;
+  renderResults(data);
+
+  const stats = JSON.parse(localStorage.getItem('cs_stats')||'{"scans":0,"vulns":0,"ports":0,"reports":0}');
+  stats.scans++;
+  stats.ports += (data.open_ports||[]).length;
+  stats.vulns += (data.vulnerabilities||[]).length;
+  localStorage.setItem('cs_stats', JSON.stringify(stats));
+});
 
 function startScan() {
   const target = document.getElementById('target').value.trim();
@@ -124,48 +125,23 @@ function startScan() {
   document.getElementById('scan-btn').style.display = 'none';
   document.getElementById('stop-btn').style.display = 'block';
   document.getElementById('cursor-indicator').style.display = 'inline';
-  document.getElementById('progress').style.width = '10%';
-  scanning = true;
+  document.getElementById('progress').style.width = '5%';
 
-  log(`[*] Target: ${target}`, 't-blue');
-  log(`[*] Port range: ${range}`, 't-blue');
-  log('[*] Starting scan...', 't-green');
-
-  fetch('/api/scan', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({target, port_range: range})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (!scanning) return;
-    document.getElementById('progress').style.width = '100%';
-
-    if (data.error) { log('[!] Error: ' + data.error, 't-red'); return; }
-
-    log(`[+] Scan complete at ${data.timestamp}`, 't-green');
-    log(`[+] Open ports: ${data.open_ports.join(', ') || 'none'}`, 't-green');
-
-    if (data.vulnerabilities && data.vulnerabilities.length) {
-      log(`[!] Vulnerabilities found: ${data.vulnerabilities.length}`, 't-red');
-    }
-
-    renderResults(data);
-
-    const stats = JSON.parse(localStorage.getItem('cs_stats')||'{"scans":0,"vulns":0,"ports":0,"reports":0}');
-    stats.scans++; stats.ports += (data.open_ports||[]).length;
-    stats.vulns += (data.vulnerabilities||[]).length;
-    localStorage.setItem('cs_stats', JSON.stringify(stats));
-  })
-  .catch(e => log('[!] Request failed: ' + e, 't-red'))
-  .finally(() => stopScan());
+  socket.emit('start_scan', {target: target, port_range: range});
 }
 
-function stopScan() {
-  scanning = false;
-  document.getElementById('scan-btn').style.display = 'block';
-  document.getElementById('stop-btn').style.display = 'none';
-  document.getElementById('cursor-indicator').style.display = 'none';
+function getBadge(sev) {
+  const s = (sev||'').toUpperCase();
+  const map = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
+  return `<span class="badge ${map[s]||'badge-info'}">${s}</span>`;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['ports','vulns','risk'][i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
 }
 
 function renderResults(data) {
@@ -173,11 +149,10 @@ function renderResults(data) {
 
   const ptbody = document.getElementById('ports-tbody');
   ptbody.innerHTML = '';
-  (data.nmap_results || []).forEach(p => {
+  (data.nmap_results||[]).forEach(p => {
     ptbody.innerHTML += `<tr>
       <td style="color:var(--green)">${p.port}</td>
-      <td>${p.service||'-'}</td>
-      <td>${p.product||'-'}</td>
+      <td>${p.service||'-'}</td><td>${p.product||'-'}</td>
       <td>${p.version||'-'}</td>
       <td><span class="badge badge-info">${p.state||'open'}</span></td>
     </tr>`;
@@ -186,7 +161,7 @@ function renderResults(data) {
 
   const vtbody = document.getElementById('vulns-tbody');
   vtbody.innerHTML = '';
-  (data.vulnerabilities || []).forEach(v => {
+  (data.vulnerabilities||[]).forEach(v => {
     vtbody.innerHTML += `<tr>
       <td style="color:var(--blue)">${v.cve_id}</td>
       <td>${v.port||'-'}</td>
@@ -198,7 +173,7 @@ function renderResults(data) {
   if (!vtbody.innerHTML) vtbody.innerHTML = '<tr><td colspan="5" style="color:var(--green)">No vulnerabilities found</td></tr>';
 
   const risk = data.risk || {};
-  const rcolor = {CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',LOW:'var(--green)',SAFE:'var(--green)'}[risk.level] || 'var(--blue)';
+  const rcolor = {CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',LOW:'var(--green)',SAFE:'var(--green)'}[risk.level]||'var(--blue)';
   document.getElementById('risk-display').innerHTML = `
     <div style="font-size:60px;font-weight:bold;color:${rcolor}">${risk.level||'N/A'}</div>
     <div style="color:var(--muted);margin:10px 0">${risk.summary||''}</div>

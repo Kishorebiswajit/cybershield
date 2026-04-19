@@ -8,7 +8,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    socketio.init_app(app, async_mode='threading')
+    socketio.init_app(app, async_mode='threading', cors_allowed_origins='*')
 
     from app.routes import main
     app.register_blueprint(main)

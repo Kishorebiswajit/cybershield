@@ -3,9 +3,14 @@ import nmap
 import concurrent.futures
 from datetime import datetime
 
-def scan_ports_basic(target, port_range="1-1024"):
+
+def scan_ports_basic(target, port_range="1-1024", emit=None):
     open_ports = []
     start_port, end_port = map(int, port_range.split("-"))
+    total = end_port - start_port + 1
+
+    if emit:
+        emit('scan_log', {'msg': f'[*] Scanning {total} ports on {target}...', 'cls': 't-blue'})
 
     def check_port(port):
         try:
@@ -22,8 +27,16 @@ def scan_ports_basic(target, port_range="1-1024"):
     with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
         results = executor.map(check_port, range(start_port, end_port + 1))
 
-    open_ports = [p for p in results if p is not None]
-    return sorted(open_ports)
+    open_ports = sorted([p for p in results if p is not None])
+
+    if emit:
+        if open_ports:
+            emit('scan_log', {'msg': f'[+] Open ports: {open_ports}', 'cls': 't-green'})
+        else:
+            emit('scan_log', {'msg': '[*] No open ports found', 'cls': 't-muted'})
+        emit('scan_progress', {'value': 40})
+
+    return open_ports
 
 
 def grab_banner(target, port):
@@ -39,32 +52,44 @@ def grab_banner(target, port):
         return "No banner"
 
 
-def nmap_scan(target, port_range="1-1024"):
+def nmap_scan(target, port_range="1-1024", emit=None):
     scanner = nmap.PortScanner()
     results = []
 
+    if emit:
+        emit('scan_log', {'msg': '[*] Running Nmap service detection...', 'cls': 't-blue'})
+
     try:
         scanner.scan(target, port_range, arguments="-sV -T4")
-
         for host in scanner.all_hosts():
             for proto in scanner[host].all_protocols():
-                ports = scanner[host][proto].keys()
-                for port in ports:
+                for port in scanner[host][proto].keys():
                     info = scanner[host][proto][port]
-                    results.append({
+                    entry = {
                         "port": port,
                         "state": info["state"],
                         "service": info["name"],
                         "version": info.get("version", ""),
                         "product": info.get("product", ""),
-                    })
+                    }
+                    results.append(entry)
+                    if emit:
+                        emit('scan_log', {
+                            'msg': f'[+] Port {port}/tcp — {info["name"]} {info.get("product","")} {info.get("version","")}',
+                            'cls': 't-green'
+                        })
     except Exception as e:
+        if emit:
+            emit('scan_log', {'msg': f'[!] Nmap error: {e}', 'cls': 't-red'})
         results.append({"error": str(e)})
+
+    if emit:
+        emit('scan_progress', {'value': 75})
 
     return results
 
 
-def run_full_scan(target, port_range="1-1024"):
+def run_full_scan(target, port_range="1-1024", emit=None):
     scan_data = {
         "target": target,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -73,17 +98,26 @@ def run_full_scan(target, port_range="1-1024"):
         "banners": {}
     }
 
-    print(f"[*] Starting scan on {target}...")
-    open_ports = scan_ports_basic(target, port_range)
+    if emit:
+        emit('scan_log', {'msg': f'[*] CyberShield scan started on {target}', 'cls': 't-blue'})
+        emit('scan_progress', {'value': 5})
+
+    open_ports = scan_ports_basic(target, port_range, emit=emit)
     scan_data["open_ports"] = open_ports
-    print(f"[+] Open ports found: {open_ports}")
+
+    if emit:
+        emit('scan_log', {'msg': '[*] Grabbing service banners...', 'cls': 't-blue'})
 
     for port in open_ports[:10]:
         banner = grab_banner(target, port)
         scan_data["banners"][port] = banner
-        print(f"[+] Port {port} banner: {banner[:60]}")
+        if emit and banner != "No banner":
+            emit('scan_log', {'msg': f'[+] Port {port} — {banner[:80]}', 'cls': 't-muted'})
 
-    print("[*] Running Nmap service detection...")
-    scan_data["nmap_results"] = nmap_scan(target, port_range)
+    scan_data["nmap_results"] = nmap_scan(target, port_range, emit=emit)
+
+    if emit:
+        emit('scan_log', {'msg': '[*] Scan complete. Analyzing vulnerabilities...', 'cls': 't-blue'})
+        emit('scan_progress', {'value': 90})
 
     return scan_data
