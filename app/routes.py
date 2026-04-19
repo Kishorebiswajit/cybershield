@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from app.scanner import run_full_scan
+from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
 
 main = Blueprint('main', __name__)
 
@@ -21,4 +21,22 @@ def api_scan():
         return jsonify({"error": "No target provided"}), 400
 
     results = run_full_scan(target, port_range)
+
+    vulns = analyze_service_vulns(results.get("nmap_results", []))
+    risk = calculate_risk_score(vulns)
+
+    results["vulnerabilities"] = vulns
+    results["risk"] = risk
+
     return jsonify(results)
+
+@main.route('/api/cve', methods=['POST'])
+def api_cve():
+    data = request.get_json()
+    keyword = data.get('keyword', '')
+    if not keyword:
+        return jsonify({"error": "No keyword provided"}), 400
+
+    from app.scanner import search_cves
+    cves = search_cves(keyword)
+    return jsonify({"results": cves})
