@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_socketio import emit
 from app import socketio
 from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
 from app.scanner import run_pentest
+from app.scanner import generate_pdf_report, save_json_report, list_reports
 import threading
 
 main = Blueprint('main', __name__)
@@ -21,7 +22,8 @@ def pentest():
 
 @main.route('/results')
 def results():
-    return render_template('results.html')
+    reports = list_reports()
+    return render_template('results.html', reports=reports)
 
 @socketio.on('start_scan')
 def handle_scan(data):
@@ -40,6 +42,8 @@ def handle_scan(data):
             results["vulnerabilities"] = vulns
             results["risk"] = risk
 
+            json_file = save_json_report(results)
+            emit('scan_log', {'msg': f'[+] JSON report saved: {json_file}', 'cls': 't-muted'})
             emit('scan_log', {'msg': f'[+] Found {len(vulns)} vulnerabilities', 'cls': 't-red' if vulns else 't-green'})
             emit('scan_log', {'msg': f'[+] Risk level: {risk["level"]}', 'cls': 't-yellow'})
             emit('scan_progress', {'value': 100})
@@ -60,6 +64,36 @@ def api_pentest():
         return jsonify({"error": "No URL provided"}), 400
     results = run_pentest(target_url)
     return jsonify(results)
+
+@main.route('/api/report/pdf', methods=['POST'])
+def api_pdf_report():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No scan data provided"}), 400
+    try:
+        filename = generate_pdf_report(data)
+        return send_file(filename, as_attachment=True,
+                         download_name=filename.split("/")[-1],
+                         mimetype='application/pdf')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/report/json', methods=['POST'])
+def api_json_report():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No scan data provided"}), 400
+    try:
+        filename = save_json_report(data)
+        return send_file(filename, as_attachment=True,
+                         download_name=filename.split("/")[-1],
+                         mimetype='application/json')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/reports', methods=['GET'])
+def api_list_reports():
+    return jsonify(list_reports())
 
 @main.route('/api/cve', methods=['POST'])
 def api_cve():

@@ -47,6 +47,10 @@
 
     <div class="card" id="results-card" style="display:none;">
       <div class="card-title">Scan results</div>
+      <div id="report-btns" style="display:none;gap:10px;margin-bottom:16px;">
+        <button class="btn btn-outline" onclick="downloadPDF()">DOWNLOAD PDF</button>
+        <button class="btn btn-outline" onclick="downloadJSON()">DOWNLOAD JSON</button>
+      </div>
       <div class="tabs">
         <div class="tab active" onclick="showTab('ports')">OPEN PORTS</div>
         <div class="tab" onclick="showTab('vulns')">VULNERABILITIES</div>
@@ -102,9 +106,10 @@ socket.on('scan_complete', function(data) {
   document.getElementById('cursor-indicator').style.display = 'none';
   document.getElementById('scan-btn').style.display = 'block';
   document.getElementById('stop-btn').style.display = 'none';
-
   if (data.error) return;
   renderResults(data);
+  window._lastScanData = data;
+  document.getElementById('report-btns').style.display = 'flex';
 
   const stats = JSON.parse(localStorage.getItem('cs_stats')||'{"scans":0,"vulns":0,"ports":0,"reports":0}');
   stats.scans++;
@@ -183,6 +188,31 @@ function renderResults(data) {
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${risk.medium||0}</div><div class="stat-label">MEDIUM</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--green)">${risk.low||0}</div><div class="stat-label">LOW</div></div>
     </div>`;
+}
+
+function downloadPDF() {
+  if (!window._lastScanData) return;
+  fetch('/api/report/pdf', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(window._lastScanData)
+  })
+  .then(r => r.blob())
+  .then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cybershield_report.pdf';
+    a.click();
+  });
+}
+
+function downloadJSON() {
+  if (!window._lastScanData) return;
+  const blob = new Blob([JSON.stringify(window._lastScanData, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cybershield_report.json';
+  a.click();
 }
 </script>
 {% endblock %}
