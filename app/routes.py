@@ -5,6 +5,7 @@ from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_sco
 from app.scanner import run_pentest
 from app.scanner import generate_pdf_report, save_json_report, list_reports
 from app.auth import login_required
+from app.alerts import check_and_alert
 import threading
 
 main = Blueprint('main', __name__)
@@ -48,9 +49,15 @@ def handle_scan(data):
             results["risk"] = risk
 
             json_file = save_json_report(results)
-            emit('scan_log', {'msg': f'[+] JSON report saved: {json_file}', 'cls': 't-muted'})
+            emit('scan_log', {'msg': f'[+] Report saved: {json_file}', 'cls': 't-muted'})
             emit('scan_log', {'msg': f'[+] Found {len(vulns)} vulnerabilities', 'cls': 't-red' if vulns else 't-green'})
             emit('scan_log', {'msg': f'[+] Risk level: {risk["level"]}', 'cls': 't-yellow'})
+
+            if risk.get("critical", 0) > 0:
+                emit('scan_log', {'msg': '[!] CRITICAL vulns found — sending email alert...', 'cls': 't-red'})
+                check_and_alert(results)
+                emit('scan_log', {'msg': '[+] Alert email sent', 'cls': 't-orange'})
+
             emit('scan_progress', {'value': 100})
             emit('scan_complete', results)
         except Exception as e:
