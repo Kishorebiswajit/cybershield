@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
+from app.scanner import run_pentest
 
 main = Blueprint('main', __name__)
 
@@ -21,13 +22,21 @@ def api_scan():
         return jsonify({"error": "No target provided"}), 400
 
     results = run_full_scan(target, port_range)
-
     vulns = analyze_service_vulns(results.get("nmap_results", []))
     risk = calculate_risk_score(vulns)
-
     results["vulnerabilities"] = vulns
     results["risk"] = risk
+    return jsonify(results)
 
+@main.route('/api/pentest', methods=['POST'])
+def api_pentest():
+    data = request.get_json()
+    target_url = data.get('url', '')
+
+    if not target_url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    results = run_pentest(target_url)
     return jsonify(results)
 
 @main.route('/api/cve', methods=['POST'])
