@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}CyberShield — Scanner{% endblock %}
+{% block content %}
+
+<div style="display:grid; grid-template-columns:340px 1fr; gap:24px;">
+
+  <div>
+    <div class="card">
+      <div class="card-title">Scan configuration</div>
+      <div class="form-group">
+        <label>Target host / IP</label>
+        <input type="text" id="target" class="form-control" placeholder="192.168.1.1 or domain.com">
+      </div>
+      <div class="form-group">
+        <label>Port range</label>
+        <select id="port-range" class="form-control">
+          <option value="1-1024">Common ports (1-1024)</option>
+          <option value="1-100">Top 100 (1-100)</option>
+          <option value="1-65535">Full scan (1-65535)</option>
+          <option value="custom">Custom range</option>
+        </select>
+      </div>
+      <div class="form-group" id="custom-range-group" style="display:none;">
+        <label>Custom range (e.g. 8000-9000)</label>
+        <input type="text" id="custom-range" class="form-control" placeholder="8000-9000">
+      </div>
+      <div class="form-group">
+        <label>Scan mode</label>
+        <select id="scan-mode" class="form-control">
+          <option value="basic">Basic (fast)</option>
+          <option value="nmap">Nmap + service detection</option>
+          <option value="full">Full + CVE lookup</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="scan-btn" style="width:100%;" onclick="startScan()">
+        RUN SCAN
+      </button>
+      <button class="btn btn-danger" id="stop-btn" style="width:100%;margin-top:10px;display:none;" onclick="stopScan()">
+        STOP
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Live output <span class="cursor" id="cursor-indicator" style="display:none;"></span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+      <div class="terminal" id="scan-output">[*] Waiting for scan target...<br></div>
+    </div>
+
+    <div class="card" id="results-card" style="display:none;">
+      <div class="card-title">Scan results</div>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('ports')">OPEN PORTS</div>
+        <div class="tab" onclick="showTab('vulns')">VULNERABILITIES</div>
+        <div class="tab" onclick="showTab('risk')">RISK SCORE</div>
+      </div>
+
+      <div class="tab-content active" id="tab-ports">
+        <table class="table">
+          <thead><tr><th>Port</th><th>Service</th><th>Product</th><th>Version</th><th>State</th></tr></thead>
+          <tbody id="ports-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-vulns">
+        <table class="table">
+          <thead><tr><th>CVE ID</th><th>Port</th><th>Severity</th><th>Score</th><th>Description</th></tr></thead>
+          <tbody id="vulns-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-risk">
+        <div id="risk-display" style="text-align:center;padding:30px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const socket = io();
+let scanning = false;
+
+document.getElementById('port-range').addEventListener('change', function() {
+  document.getElementById('custom-range-group').style.display =
+    this.value === 'custom' ? 'block' : 'none';
+});
+
+function log(msg, cls='') {
+  const term = document.getElementById('scan-output');
+  const div = document.createElement('div');
+  div.className = cls;
+  div.innerHTML = msg;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['ports','vulns','risk'][i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function getBadge(sev) {
+  const s = (sev||'').toUpperCase();
+  const map = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
+  return `<span class="badge ${map[s]||'badge-info'}">${s}</span>`;
+}
+
+function startScan() {
+  const target = document.getElementById('target').value.trim();
+  if (!target) { alert('Please enter a target'); return; }
+
+  let range = document.getElementById('port-range').value;
+  if (range === 'custom') range = document.getElementById('custom-range').value || '1-1024';
+
+  document.getElementById('scan-output').innerHTML = '';
+  document.getElementById('results-card').style.display = 'none';
+  document.getElementById('scan-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'block';
+  document.getElementById('cursor-indicator').style.display = 'inline';
+  document.getElementById('progress').style.width = '10%';
+  scanning = true;
+
+  log(`[*] Target: ${target}`, 't-blue');
+  log(`[*] Port range: ${range}`, 't-blue');
+  log('[*] Starting scan...', 't-green');
+
+  fetch('/api/scan', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({target, port_range: range})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!scanning) return;
+    document.getElementById('progress').style.width = '100%';
+
+    if (data.error) { log('[!] Error: ' + data.error, 't-red'); return; }
+
+    log(`[+] Scan complete at ${data.timestamp}`, 't-green');
+    log(`[+] Open ports: ${data.open_ports.join(', ') || 'none'}`, 't-green');
+
+    if (data.vulnerabilities && data.vulnerabilities.length) {
+      log(`[!] Vulnerabilities found: ${data.vulnerabilities.length}`, 't-red');
+    }
+
+    renderResults(data);
+
+    const stats = JSON.parse(localStorage.getItem('cs_stats')||'{"scans":0,"vulns":0,"ports":0,"reports":0}');
+    stats.scans++; stats.ports += (data.open_ports||[]).length;
+    stats.vulns += (data.vulnerabilities||[]).length;
+    localStorage.setItem('cs_stats', JSON.stringify(stats));
+  })
+  .catch(e => log('[!] Request failed: ' + e, 't-red'))
+  .finally(() => stopScan());
+}
+
+function stopScan() {
+  scanning = false;
+  document.getElementById('scan-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('cursor-indicator').style.display = 'none';
+}
+
+function renderResults(data) {
+  document.getElementById('results-card').style.display = 'block';
+
+  const ptbody = document.getElementById('ports-tbody');
+  ptbody.innerHTML = '';
+  (data.nmap_results || []).forEach(p => {
+    ptbody.innerHTML += `<tr>
+      <td style="color:var(--green)">${p.port}</td>
+      <td>${p.service||'-'}</td>
+      <td>${p.product||'-'}</td>
+      <td>${p.version||'-'}</td>
+      <td><span class="badge badge-info">${p.state||'open'}</span></td>
+    </tr>`;
+  });
+  if (!ptbody.innerHTML) ptbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">No ports found</td></tr>';
+
+  const vtbody = document.getElementById('vulns-tbody');
+  vtbody.innerHTML = '';
+  (data.vulnerabilities || []).forEach(v => {
+    vtbody.innerHTML += `<tr>
+      <td style="color:var(--blue)">${v.cve_id}</td>
+      <td>${v.port||'-'}</td>
+      <td>${getBadge(v.severity)}</td>
+      <td style="color:var(--yellow)">${v.score}</td>
+      <td style="font-size:12px">${(v.description||'').substring(0,100)}...</td>
+    </tr>`;
+  });
+  if (!vtbody.innerHTML) vtbody.innerHTML = '<tr><td colspan="5" style="color:var(--green)">No vulnerabilities found</td></tr>';
+
+  const risk = data.risk || {};
+  const rcolor = {CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',LOW:'var(--green)',SAFE:'var(--green)'}[risk.level] || 'var(--blue)';
+  document.getElementById('risk-display').innerHTML = `
+    <div style="font-size:60px;font-weight:bold;color:${rcolor}">${risk.level||'N/A'}</div>
+    <div style="color:var(--muted);margin:10px 0">${risk.summary||''}</div>
+    <div style="display:flex;gap:20px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
+      <div class="stat-card"><div class="stat-value" style="color:var(--red)">${risk.critical||0}</div><div class="stat-label">CRITICAL</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${risk.high||0}</div><div class="stat-label">HIGH</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${risk.medium||0}</div><div class="stat-label">MEDIUM</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">${risk.low||0}</div><div class="stat-label">LOW</div></div>
+    </div>`;
+}
+</script>
+{% endblock %}

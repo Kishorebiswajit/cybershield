@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}CyberShield — Dashboard{% endblock %}
+{% block content %}
+
+<div class="card" style="text-align:center; padding: 50px 20px;">
+  <div style="font-size:48px; color: var(--green); letter-spacing: 6px; font-weight:bold;">
+    CYBERSHIELD
+  </div>
+  <div style="color: var(--blue); font-size:13px; letter-spacing:3px; margin: 12px 0 30px;">
+    VULNERABILITY SCANNER & PENETRATION TESTING FRAMEWORK
+  </div>
+  <div style="color: var(--muted); font-size:12px; margin-bottom: 40px;">
+    [ Ethical use only — scan targets you own or have permission to test ]
+  </div>
+  <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+    <a href="/scan" class="btn btn-primary">START SCAN</a>
+    <a href="/pentest" class="btn btn-outline">PENTEST</a>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value" id="stat-scans">0</div>
+    <div class="stat-label">SCANS RUN</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--red)" id="stat-vulns">0</div>
+    <div class="stat-label">VULNS FOUND</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--orange)" id="stat-ports">0</div>
+    <div class="stat-label">OPEN PORTS</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--blue)" id="stat-reports">0</div>
+    <div class="stat-label">REPORTS</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">System status</div>
+  <div class="terminal" id="boot-terminal"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const lines = [
+  { text: "[+] CyberShield v1.0 initialized", cls: "t-green" },
+  { text: "[+] Flask server running on port 5000", cls: "t-green" },
+  { text: "[*] Loading scanner modules...", cls: "t-blue" },
+  { text: "[+] Port scanner ready", cls: "t-green" },
+  { text: "[+] Vulnerability engine connected to NVD API", cls: "t-green" },
+  { text: "[+] Pentest modules loaded (SQLi, XSS, Headers, DirScan)", cls: "t-green" },
+  { text: "[*] All systems operational", cls: "t-blue" },
+  { text: "[ Ready to scan. Select a mode above to begin. ]", cls: "t-muted" },
+];
+const term = document.getElementById('boot-terminal');
+let i = 0;
+function typeLine() {
+  if (i >= lines.length) return;
+  const div = document.createElement('div');
+  div.className = lines[i].cls;
+  div.textContent = lines[i].text;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+  i++;
+  setTimeout(typeLine, 180);
+}
+setTimeout(typeLine, 400);
+
+const stats = JSON.parse(localStorage.getItem('cs_stats') || '{"scans":0,"vulns":0,"ports":0,"reports":0}');
+document.getElementById('stat-scans').textContent = stats.scans;
+document.getElementById('stat-vulns').textContent = stats.vulns;
+document.getElementById('stat-ports').textContent = stats.ports;
+document.getElementById('stat-reports').textContent = stats.reports;
+</script>
+{% endblock %}

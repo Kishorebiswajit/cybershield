@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CyberShield{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">CYBER<span>SHIELD</span></div>
+    <div class="nav-links">
+      <a href="/">HOME</a>
+      <a href="/scan">SCANNER</a>
+      <a href="/pentest">PENTEST</a>
+      <a href="/results">RESULTS</a>
+    </div>
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+  <script src="{{ url_for('static', filename='js/terminal.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
