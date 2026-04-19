@@ -1,20 +1,29 @@
 {% extends "base.html" %}
-{% block title %}CyberShield — Dashboard{% endblock %}
+{% block title %}CyberShield — Command Center{% endblock %}
 {% block content %}
 
-<div class="card" style="text-align:center; padding: 50px 20px;">
-  <div style="font-size:48px; color: var(--green); letter-spacing: 6px; font-weight:bold;">
+<div class="card" style="padding: 48px 20px; text-align:center; border-color: #1e3a2a;">
+  <div style="font-size:11px;color:var(--green);letter-spacing:4px;margin-bottom:12px;">
+    // OPERATOR SESSION ACTIVE
+  </div>
+  <div style="font-size:42px;color:var(--green);letter-spacing:6px;font-weight:bold;">
     CYBERSHIELD
   </div>
-  <div style="color: var(--blue); font-size:13px; letter-spacing:3px; margin: 12px 0 30px;">
+  <div style="color:var(--blue);font-size:11px;letter-spacing:4px;margin:10px 0 6px;">
     VULNERABILITY SCANNER & PENETRATION TESTING FRAMEWORK
   </div>
-  <div style="color: var(--muted); font-size:12px; margin-bottom: 40px;">
-    [ Ethical use only — scan targets you own or have permission to test ]
+  <div style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+    ── THREAT HUNTER MODE ENGAGED ──
   </div>
-  <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
-    <a href="/scan" class="btn btn-primary">START SCAN</a>
-    <a href="/pentest" class="btn btn-outline">PENTEST</a>
+  <div style="color:var(--muted);font-size:11px;margin-bottom:36px;letter-spacing:1px;">
+    [ AUTHORIZED OPERATOR: <span style="color:var(--green)">{{ session.get('username', 'UNKNOWN')|upper }}</span> ]
+    &nbsp;|&nbsp;
+    [ STATUS: <span style="color:var(--green)">SECURE</span> ]
+  </div>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+    <a href="/scan" class="btn btn-primary">INITIATE SCAN</a>
+    <a href="/pentest" class="btn btn-outline">LAUNCH PENTEST</a>
+    <a href="/results" class="btn btn-outline">VIEW REPORTS</a>
   </div>
 </div>
 
@@ -38,24 +47,28 @@
 </div>
 
 <div class="card">
-  <div class="card-title">System status</div>
+  <div class="card-title">System diagnostics</div>
   <div class="terminal" id="boot-terminal"></div>
 </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
 const lines = [
-  { text: "[+] CyberShield v1.0 initialized", cls: "t-green" },
-  { text: "[+] Flask server running on port 5000", cls: "t-green" },
-  { text: "[*] Loading scanner modules...", cls: "t-blue" },
-  { text: "[+] Port scanner ready", cls: "t-green" },
-  { text: "[+] Vulnerability engine connected to NVD API", cls: "t-green" },
-  { text: "[+] Pentest modules loaded (SQLi, XSS, Headers, DirScan)", cls: "t-green" },
-  { text: "[*] All systems operational", cls: "t-blue" },
-  { text: "[ Ready to scan. Select a mode above to begin. ]", cls: "t-muted" },
+  { text: "[+] CYBERSHIELD v1.0 — ONLINE", cls: "t-green" },
+  { text: "[+] Operator authenticated — session secured", cls: "t-green" },
+  { text: "[*] Port scanner: READY", cls: "t-blue" },
+  { text: "[*] Nmap engine: READY", cls: "t-blue" },
+  { text: "[*] NVD API connection: ESTABLISHED", cls: "t-blue" },
+  { text: "[*] Pentest modules: ARMED (SQLi / XSS / Headers / DirScan)", cls: "t-blue" },
+  { text: "[*] Report engine: READY", cls: "t-blue" },
+  { text: "[*] Email alert system: STANDBY", cls: "t-blue" },
+  { text: "[+] All systems nominal — awaiting orders", cls: "t-green" },
+  { text: "────────────────────────────────────────────", cls: "t-muted" },
+  { text: "  SELECT A MODULE ABOVE TO BEGIN OPERATION  ", cls: "t-muted" },
+  { text: "────────────────────────────────────────────", cls: "t-muted" },
 ];
+
 const term = document.getElementById('boot-terminal');
 let i = 0;
 function typeLine() {
@@ -66,9 +79,9 @@ function typeLine() {
   term.appendChild(div);
   term.scrollTop = term.scrollHeight;
   i++;
-  setTimeout(typeLine, 180);
+  setTimeout(typeLine, 150);
 }
-setTimeout(typeLine, 400);
+setTimeout(typeLine, 600);
 
 const stats = JSON.parse(localStorage.getItem('cs_stats') || '{"scans":0,"vulns":0,"ports":0,"reports":0}');
 document.getElementById('stat-scans').textContent = stats.scans;
