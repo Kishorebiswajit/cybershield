@@ -1,10 +1,207 @@
 {% extends "base.html" %}
-{% block title %}CyberShield — Results{% endblock %}
+{% block title %}CyberShield — Reports{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="card-title">Scan history</div>
-  <div style="color:var(--muted);font-size:13px;">
-    [ Run a scan first — results will appear here after each scan ]
+
+<div style="display:flex;flex-direction:column;gap:20px;">
+  <div class="card">
+    <div class="card-title">Scan History</div>
+    
+    <div id="reports-loading" style="text-align:center;padding:20px;color:var(--muted);">
+      Loading reports...
+    </div>
+    
+    <table class="table" id="reports-table" style="display:none;">
+      <thead>
+        <tr>
+          <th>Target</th>
+          <th>Date & Time</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="reports-tbody"></tbody>
+    </table>
+    
+    <div id="no-reports" style="text-align:center;padding:20px;color:var(--muted);display:none;">
+      No scan reports found. Run a scan first to see results here.
+    </div>
+  </div>
+
+  <div class="card" id="details-card" style="display:none;">
+    <div class="card-title">Report Details</div>
+    <div id="details-content"></div>
   </div>
 </div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let allReports = [];
+
+function loadReports() {
+  fetch('/api/reports')
+    .then(r => r.json())
+    .then(data => {
+      allReports = data;
+      renderReports(data);
+    })
+    .catch(err => {
+      console.error('Error loading reports:', err);
+      document.getElementById('reports-loading').innerHTML = '<span style="color:var(--red)">Error loading reports</span>';
+    });
+}
+
+function renderReports(reports) {
+  const loading = document.getElementById('reports-loading');
+  const table = document.getElementById('reports-table');
+  const tbody = document.getElementById('reports-tbody');
+  const noReports = document.getElementById('no-reports');
+
+  if (!reports || reports.length === 0) {
+    loading.style.display = 'none';
+    table.style.display = 'none';
+    noReports.style.display = 'block';
+    return;
+  }
+
+  loading.style.display = 'none';
+  noReports.style.display = 'none';
+  table.style.display = 'table';
+
+  tbody.innerHTML = '';
+  reports.forEach((report, idx) => {
+    const target = report.filename.match(/scan_([^_]+)/)?.[1]?.replace(/_/g, '.') || 'Unknown';
+    const sizeKB = (report.size / 1024).toFixed(2);
+    const type = report.type.toUpperCase();
+    
+    tbody.innerHTML += `<tr>
+      <td style="color:var(--blue)">${target}</td>
+      <td style="color:var(--muted);font-size:12px">${report.created}</td>
+      <td><span class="badge ${report.type === 'pdf' ? 'badge-warning' : 'badge-info'}">${type}</span></td>
+      <td style="color:var(--muted)">${sizeKB} KB</td>
+      <td>
+        <button class="btn btn-outline" style="padding:4px 8px;font-size:12px;margin-right:5px;" onclick="viewReportDetails(${idx})">VIEW</button>
+        <button class="btn btn-outline" style="padding:4px 8px;font-size:12px;" onclick="downloadReport('${report.filename}')">DOWNLOAD</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function viewReportDetails(idx) {
+  const report = allReports[idx];
+  const filename = report.filename;
+  
+  if (filename.endsWith('.json')) {
+    fetch(`/reports/${filename}`)
+      .then(r => r.json())
+      .then(data => {
+        displayReportDetails(data);
+      })
+      .catch(err => {
+        console.error('Error loading report:', err);
+        document.getElementById('details-content').innerHTML = '<span style="color:var(--red)">Error loading report</span>';
+      });
+  }
+}
+
+function displayReportDetails(data) {
+  const detailsCard = document.getElementById('details-card');
+  const detailsContent = document.getElementById('details-content');
+  
+  detailsCard.style.display = 'block';
+
+  const target = data.target || 'Unknown';
+  const timestamp = data.timestamp || 'N/A';
+  const risk = data.risk || {};
+  const openPorts = data.open_ports || [];
+  const vulns = data.vulnerabilities || [];
+
+  let html = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px;">
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--blue);font-size:14px;">${target}</div>
+        <div class="stat-label">TARGET</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--green)">${openPorts.length}</div>
+        <div class="stat-label">OPEN PORTS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--red)">${vulns.length}</div>
+        <div class="stat-label">VULNS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:${getRiskColor(risk.level)};font-weight:bold;">${risk.level || 'N/A'}</div>
+        <div class="stat-label">RISK LEVEL</div>
+      </div>
+    </div>
+  `;
+
+  if (vulns.length > 0) {
+    html += `
+      <div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:bold;color:var(--yellow);margin-bottom:10px;">TOP VULNERABILITIES</div>
+        <table class="table" style="font-size:11px;">
+          <thead><tr><th>CVE</th><th>Port</th><th>Severity</th><th>Score</th></tr></thead>
+          <tbody>
+    `;
+    vulns.slice(0, 5).forEach(v => {
+      html += `<tr>
+        <td style="color:var(--blue)">${v.cve_id}</td>
+        <td>${v.port || '-'}</td>
+        <td><span class="badge ${getBadgeClass(v.severity)}">${v.severity}</span></td>
+        <td style="color:${getSeverityColor(v.severity)}">${v.score}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  detailsContent.innerHTML = html;
+}
+
+function getRiskColor(level) {
+  const colors = {
+    'CRITICAL': 'var(--red)',
+    'HIGH': 'var(--orange)',
+    'MEDIUM': 'var(--yellow)',
+    'LOW': 'var(--green)',
+    'SAFE': 'var(--green)'
+  };
+  return colors[level] || 'var(--blue)';
+}
+
+function getSeverityColor(sev) {
+  const colors = {
+    'CRITICAL': '#ff3333',
+    'HIGH': '#ff8c00',
+    'MEDIUM': '#ffd700',
+    'LOW': '#00ff41'
+  };
+  return colors[sev?.toUpperCase()] || '#c8c8d8';
+}
+
+function getBadgeClass(sev) {
+  const classes = {
+    'CRITICAL': 'badge-critical',
+    'HIGH': 'badge-high',
+    'MEDIUM': 'badge-medium',
+    'LOW': 'badge-low'
+  };
+  return classes[sev?.toUpperCase()] || 'badge-info';
+}
+
+function downloadReport(filename) {
+  const link = document.createElement('a');
+  link.href = `/reports/${filename}`;
+  link.download = filename;
+  link.click();
+}
+
+// Load reports on page load
+document.addEventListener('DOMContentLoaded', loadReports);
+
+// Refresh reports every 30 seconds
+setInterval(loadReports, 30000);
+</script>
 {% endblock %}
