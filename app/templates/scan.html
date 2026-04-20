@@ -2,8 +2,7 @@
 {% block title %}CyberShield — Scanner{% endblock %}
 {% block content %}
 
-<div style="display:grid; grid-template-columns:340px 1fr; gap:24px;">
-
+<div style="display:grid;grid-template-columns:340px 1fr;gap:24px;">
   <div>
     <div class="card">
       <div class="card-title">Scan configuration</div>
@@ -39,9 +38,21 @@
         Live output
         <span class="cursor" id="cursor-indicator" style="display:none;"></span>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progress"></div>
+
+      <!-- Critical alert banner -->
+      <div class="critical-banner" id="critical-banner">
+        <span style="font-size:18px;">&#9888;</span>
+        <span>CRITICAL VULNERABILITY DETECTED — CHECK RESULTS</span>
       </div>
+
+      <!-- Digger progress bar -->
+      <div class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress"></div>
+          <div class="digger" id="digger">&#x1F69C;</div>
+        </div>
+      </div>
+
       <div class="terminal" id="scan-output">[*] Waiting for scan target...<br></div>
     </div>
 
@@ -56,21 +67,18 @@
         <div class="tab" onclick="showTab('vulns')">VULNERABILITIES</div>
         <div class="tab" onclick="showTab('risk')">RISK SCORE</div>
       </div>
-
       <div class="tab-content active" id="tab-ports">
         <table class="table">
           <thead><tr><th>Port</th><th>Service</th><th>Product</th><th>Version</th><th>State</th></tr></thead>
           <tbody id="ports-tbody"></tbody>
         </table>
       </div>
-
       <div class="tab-content" id="tab-vulns">
         <table class="table">
           <thead><tr><th>CVE ID</th><th>Port</th><th>Severity</th><th>Score</th><th>Description</th></tr></thead>
           <tbody id="vulns-tbody"></tbody>
         </table>
       </div>
-
       <div class="tab-content" id="tab-risk">
         <div id="risk-display" style="text-align:center;padding:30px;"></div>
       </div>
@@ -99,14 +107,24 @@ socket.on('scan_log', function(data) {
 });
 
 socket.on('scan_progress', function(data) {
-  document.getElementById('progress').style.width = data.value + '%';
+  window.CyberShield.setProgress(data.value);
 });
 
 socket.on('scan_complete', function(data) {
   document.getElementById('cursor-indicator').style.display = 'none';
   document.getElementById('scan-btn').style.display = 'block';
   document.getElementById('stop-btn').style.display = 'none';
+  window.CyberShield.scanEnd();
+  window.CyberShield.setProgress(100);
+  setTimeout(() => window.CyberShield.setProgress(0), 1500);
+
   if (data.error) return;
+
+  if (data.risk && data.risk.critical > 0) {
+    window.CyberShield.criticalFound();
+    document.getElementById('critical-banner').classList.add('show');
+  }
+
   renderResults(data);
   window._lastScanData = data;
   document.getElementById('report-btns').style.display = 'flex';
@@ -127,18 +145,21 @@ function startScan() {
 
   document.getElementById('scan-output').innerHTML = '';
   document.getElementById('results-card').style.display = 'none';
+  document.getElementById('critical-banner').classList.remove('show');
   document.getElementById('scan-btn').style.display = 'none';
   document.getElementById('stop-btn').style.display = 'block';
   document.getElementById('cursor-indicator').style.display = 'inline';
-  document.getElementById('progress').style.width = '5%';
 
-  socket.emit('start_scan', {target: target, port_range: range});
+  window.CyberShield.scanStart();
+  window.CyberShield.setProgress(5);
+
+  socket.emit('start_scan', {target, port_range: range});
 }
 
 function getBadge(sev) {
   const s = (sev||'').toUpperCase();
-  const map = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
-  return `<span class="badge ${map[s]||'badge-info'}">${s}</span>`;
+  const m = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
+  return `<span class="badge ${m[s]||'badge-info'}">${s}</span>`;
 }
 
 function showTab(name) {
@@ -151,7 +172,6 @@ function showTab(name) {
 
 function renderResults(data) {
   document.getElementById('results-card').style.display = 'block';
-
   const ptbody = document.getElementById('ports-tbody');
   ptbody.innerHTML = '';
   (data.nmap_results||[]).forEach(p => {
@@ -193,12 +213,9 @@ function renderResults(data) {
 function downloadPDF() {
   if (!window._lastScanData) return;
   fetch('/api/report/pdf', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(window._lastScanData)
-  })
-  .then(r => r.blob())
-  .then(blob => {
+  }).then(r=>r.blob()).then(blob => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'cybershield_report.pdf';
@@ -208,7 +225,7 @@ function downloadPDF() {
 
 function downloadJSON() {
   if (!window._lastScanData) return;
-  const blob = new Blob([JSON.stringify(window._lastScanData, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify(window._lastScanData,null,2)],{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'cybershield_report.json';
