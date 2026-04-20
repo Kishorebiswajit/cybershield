@@ -1,3 +1,4 @@
+nohup: ignoring input
 Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
  * Serving Flask app 'app'
  * Debug mode: on
@@ -10,4 +11,196 @@ Werkzeug appears to be used in a production deployment. Consider switching to a 
 Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
  * Debugger is active!
  * Debugger PIN: 329-571-770
-127.0.0.1 - - [19/Apr/2026 11:27:45] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:21] "GET /socket.io/?EIO=4&transport=polling&t=PshSYlS HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:21] "POST /socket.io/?EIO=4&transport=polling&t=PshSZ8U&sid=c5tv8aKLeZHU-HIpAAAA HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:21] "GET /socket.io/?EIO=4&transport=polling&t=PshSZ8Y&sid=c5tv8aKLeZHU-HIpAAAA HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:21] "GET /socket.io/?EIO=4&transport=polling&t=PshSZ9D&sid=c5tv8aKLeZHU-HIpAAAA HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:24] "GET /socket.io/?EIO=4&transport=polling&t=PshSa26 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:24] "POST /socket.io/?EIO=4&transport=polling&t=PshSa2O&sid=m9B-K_ThoIOj9-MuAAAC HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:24] "GET /socket.io/?EIO=4&transport=polling&t=PshSa2R&sid=m9B-K_ThoIOj9-MuAAAC HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:24] "GET /socket.io/?EIO=4&transport=polling&t=PshSa2o&sid=m9B-K_ThoIOj9-MuAAAC HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 20:41:33] "[35m[1mGET / HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/engineio/middleware.py", line 74, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/app/auth.py", line 26, in decorated
+    return redirect(url_for('auth.login'))
+                    ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/helpers.py", line 239, in url_for
+    return current_app.url_for(
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/werkzeug/routing/map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auth.login'. Did you mean 'main.scan' instead?
+10.234.244.77 - - [20/Apr/2026 20:41:35] "[35m[1mGET /api/reports HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/engineio/middleware.py", line 74, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/app/auth.py", line 26, in decorated
+    return redirect(url_for('auth.login'))
+                    ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/helpers.py", line 239, in url_for
+    return current_app.url_for(
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/werkzeug/routing/map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auth.login'. Did you mean 'main.scan' instead?
+10.234.244.77 - - [20/Apr/2026 20:42:35] "[35m[1mGET /api/reports HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/engineio/middleware.py", line 74, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/app/auth.py", line 26, in decorated
+    return redirect(url_for('auth.login'))
+                    ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/helpers.py", line 239, in url_for
+    return current_app.url_for(
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/werkzeug/routing/map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auth.login'. Did you mean 'main.scan' instead?
+10.234.244.77 - - [20/Apr/2026 20:43:35] "[35m[1mGET /api/reports HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/engineio/middleware.py", line 74, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/app/auth.py", line 26, in decorated
+    return redirect(url_for('auth.login'))
+                    ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/helpers.py", line 239, in url_for
+    return current_app.url_for(
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/werkzeug/routing/map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auth.login'. Did you mean 'main.scan' instead?
+10.234.244.77 - - [20/Apr/2026 20:44:35] "[35m[1mGET /api/reports HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/engineio/middleware.py", line 74, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/app/auth.py", line 26, in decorated
+    return redirect(url_for('auth.login'))
+                    ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/helpers.py", line 239, in url_for
+    return current_app.url_for(
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/flask/app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+    
+  File "/home/kali/Desktop/cybershield/venv/lib/python3.13/site-packages/werkzeug/routing/map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auth.login'. Did you mean 'main.scan' instead?

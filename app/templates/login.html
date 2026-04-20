@@ -29,7 +29,9 @@
       </div>
       {% endif %}
 
-      <form method="POST" action="/login">
+      <form method="POST"
+    {% if request.method == "POST" %}
+    {% endif %} method="POST" action="/login">
         <div class="form-group">
           <label>Username</label>
           <input type="text" name="username" class="form-control"
