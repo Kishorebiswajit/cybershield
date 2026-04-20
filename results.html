@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Reports</title>
+    <script>
+        async function fetchReports() {
+            const response = await fetch('/api/reports');
+            const reports = await response.json();
+            const tableBody = document.getElementById('reports-table-body');
+            reports.forEach(report => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${report.id}</td><td>${report.name}</td><td>${report.date}</td><td><a href="/report/${report.id}">View</a></td><td><a href="/download/${report.id}.json">Download JSON</a> | <a href="/download/${report.id}.pdf">Download PDF</a></td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        window.onload = fetchReports;
+    </script>
+</head>
+<body>
+    <h1>Saved Scan Reports</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Date Created</th>
+                <th>View</th>
+                <th>Download</th>
+            </tr>
+        </thead>
+        <tbody id="reports-table-body">
+            <!-- Report entries will be populated here by fetchReports() -->
+        </tbody>
+    </table>
+</body>
+</html>
