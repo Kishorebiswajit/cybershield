@@ -187,3 +187,7 @@ def serve_report(filename):
         return send_from_directory('reports', filename)
     except Exception as e:
         return jsonify({"error": "Report not found"}), 404
+
+@main.route('/dev-login')
+def dev_login():
+    return "<h2>Authentication Required</h2><p>You are seeing this page because the <b>/scan</b> route is protected by your auth setup. You will need to build out your actual login templates to proceed!</p>"
