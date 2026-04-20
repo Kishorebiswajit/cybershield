@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}CyberShield — Enumeration{% endblock %}
+{% block content %}
+
+<div style="display:grid;grid-template-columns:320px 1fr;gap:24px;">
+  <div>
+    <div class="card">
+      <div class="card-title">Enumeration config</div>
+      <div class="form-group">
+        <label>Target domain</label>
+        <input type="text" id="enum-target" class="form-control" placeholder="example.com">
+      </div>
+      <div class="form-group">
+        <label>Target URL (optional)</label>
+        <input type="text" id="enum-url" class="form-control" placeholder="http://example.com">
+      </div>
+      <div style="font-size:11px;color:var(--blue);letter-spacing:1px;margin-bottom:10px;">
+        > MODULES
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:2;margin-bottom:16px;">
+        <span style="color:var(--green)">[+]</span> Whois & IP geolocation<br>
+        <span style="color:var(--green)">[+]</span> DNS records (A,MX,NS,TXT,CNAME)<br>
+        <span style="color:var(--green)">[+]</span> Subdomain brute force (30 subs)<br>
+        <span style="color:var(--green)">[+]</span> Technology fingerprinting<br>
+        <span style="color:var(--green)">[+]</span> Directory brute force (35 paths)
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="startEnum()">
+        START ENUMERATION
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Live output <span class="cursor" id="enum-cursor" style="display:none;"></span></div>
+      <div class="progress-bar"><div class="progress-fill" id="enum-progress"></div></div>
+      <div class="terminal" id="enum-terminal">[*] Enter target domain to begin...<br></div>
+    </div>
+
+    <div class="card" id="enum-results" style="display:none;">
+      <div class="card-title">Results</div>
+      <div class="tabs">
+        <div class="tab active" onclick="showEnumTab('whois')">WHOIS</div>
+        <div class="tab" onclick="showEnumTab('dns')">DNS</div>
+        <div class="tab" onclick="showEnumTab('tech')">TECH</div>
+        <div class="tab" onclick="showEnumTab('dirs')">DIRS</div>
+      </div>
+
+      <div class="tab-content active" id="etab-whois">
+        <div id="whois-display"></div>
+      </div>
+      <div class="tab-content" id="etab-dns">
+        <div id="dns-display"></div>
+      </div>
+      <div class="tab-content" id="etab-tech">
+        <div id="tech-display"></div>
+      </div>
+      <div class="tab-content" id="etab-dirs">
+        <table class="table">
+          <thead><tr><th>Path</th><th>Status</th><th>Size</th><th>Severity</th></tr></thead>
+          <tbody id="dirs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+function enumLog(msg, cls='') {
+  const t = document.getElementById('enum-terminal');
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = msg;
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+}
+
+function showEnumTab(name) {
+  document.querySelectorAll('#enum-results .tab').forEach((t,i) => {
+    t.classList.toggle('active', ['whois','dns','tech','dirs'][i] === name);
+  });
+  document.querySelectorAll('#enum-results .tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('etab-' + name).classList.add('active');
+}
+
+function getBadge(sev) {
+  const s = (sev||'').toUpperCase();
+  const m = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
+  return `<span class="badge ${m[s]||'badge-info'}">${s}</span>`;
+}
+
+socket.on('enum_log', d => enumLog(d.msg, d.cls));
+socket.on('enum_progress', d => {
+  document.getElementById('enum-progress').style.width = d.value + '%';
+});
+socket.on('enum_complete', data => {
+  document.getElementById('enum-cursor').style.display = 'none';
+  if (data.error) return;
+  renderEnum(data);
+});
+
+function startEnum() {
+  const target = document.getElementById('enum-target').value.trim();
+  const url = document.getElementById('enum-url').value.trim();
+  if (!target) { alert('Enter a target domain'); return; }
+
+  document.getElementById('enum-terminal').innerHTML = '';
+  document.getElementById('enum-results').style.display = 'none';
+  document.getElementById('enum-cursor').style.display = 'inline';
+  document.getElementById('enum-progress').style.width = '5%';
+
+  socket.emit('start_enum', {target, url});
+}
+
+function renderEnum(data) {
+  document.getElementById('enum-results').style.display = 'block';
+
+  const w = data.whois || {};
+  const ip = w.ip_info || {};
+  document.getElementById('whois-display').innerHTML = `
+    <table class="table">
+      <tbody>
+        ${row('Domain', w.domain_name)}
+        ${row('Registrar', w.registrar)}
+        ${row('Created', w.creation_date)}
+        ${row('Expires', w.expiration_date)}
+        ${row('Org', w.org)}
+        ${row('Country', w.country)}
+        ${row('Name Servers', (w.name_servers||[]).join(', '))}
+        ${row('Emails', (w.emails||[]).join(', '))}
+        <tr><td colspan="2" style="color:var(--green);padding-top:12px;font-size:11px;letter-spacing:1px;">IP INFO</td></tr>
+        ${row('Resolved IP', ip.resolved_ip)}
+        ${row('Location', [ip.city, ip.country].filter(Boolean).join(', '))}
+        ${row('ISP', ip.isp)}
+        ${row('Org', ip.org)}
+        ${row('Timezone', ip.timezone)}
+      </tbody>
+    </table>`;
+
+  const dns = data.dns || {};
+  let dnsHtml = '';
+  for (const [type, records] of Object.entries(dns.records || {})) {
+    records.forEach(r => {
+      dnsHtml += `<tr>
+        <td><span class="badge badge-info">${type}</span></td>
+        <td style="font-size:12px;color:var(--text)">${r}</td>
+      </tr>`;
+    });
+  }
+  if (dns.subdomains && dns.subdomains.length) {
+    dnsHtml += `<tr><td colspan="2" style="color:var(--green);padding-top:12px;font-size:11px;letter-spacing:1px;">LIVE SUBDOMAINS</td></tr>`;
+    dns.subdomains.forEach(s => {
+      dnsHtml += `<tr>
+        <td style="color:var(--green)">${s.subdomain}</td>
+        <td style="font-size:12px">${s.ips.join(', ')}</td>
+      </tr>`;
+    });
+  }
+  document.getElementById('dns-display').innerHTML = `
+    <table class="table"><thead><tr><th>Type</th><th>Value</th></tr></thead>
+    <tbody>${dnsHtml || '<tr><td colspan="2" style="color:var(--muted)">No DNS data</td></tr>'}</tbody></table>`;
+
+  const tech = data.technologies || {};
+  const techs = tech.technologies || [];
+  document.getElementById('tech-display').innerHTML = `
+    <table class="table">
+      <thead><tr><th>Info</th><th>Value</th></tr></thead>
+      <tbody>
+        ${row('Title', tech.title)}
+        ${row('Server', tech.server)}
+        ${row('Status', tech.status_code)}
+        ${row('Content-Type', tech.content_type)}
+      </tbody>
+    </table>
+    <div style="margin-top:16px;">
+      <div style="font-size:11px;color:var(--blue);letter-spacing:1px;margin-bottom:10px;">> DETECTED TECHNOLOGIES</div>
+      ${techs.length ? techs.map(t => `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--green)">${t.technology}</span>
+          <span>${getBadge(t.confidence)}</span>
+        </div>`).join('') : '<div style="color:var(--muted)">No technologies detected</div>'}
+    </div>`;
+
+  const dirs = data.directories || [];
+  const dtbody = document.getElementById('dirs-tbody');
+  dtbody.innerHTML = '';
+  dirs.forEach(d => {
+    dtbody.innerHTML += `<tr>
+      <td style="color:var(--blue);font-size:12px">${d.path}</td>
+      <td><span class="badge ${d.status===200?'badge-critical':d.status===403?'badge-medium':'badge-info'}">${d.status}</span></td>
+      <td style="color:var(--muted);font-size:12px">${d.size} bytes</td>
+      <td>${getBadge(d.severity)}</td>
+    </tr>`;
+  });
+  if (!dtbody.innerHTML) dtbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">No directories found</td></tr>';
+}
+
+function row(label, val) {
+  if (!val) return '';
+  return `<tr>
+    <td style="color:var(--blue);font-size:12px;width:140px">${label}</td>
+    <td style="font-size:12px">${val}</td>
+  </tr>`;
+}
+</script>
+{% endblock %}

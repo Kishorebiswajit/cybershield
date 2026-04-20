@@ -7,11 +7,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-
-<!-- Matrix canvas (always behind everything) -->
 <canvas id="matrix-canvas-bg"></canvas>
 
-<!-- Loading screen -->
 <div id="loading-screen">
   <canvas id="matrix-canvas"></canvas>
   <div class="loader-content">
@@ -33,6 +30,8 @@
     <a href="/" {% if request.path == '/' %}class="active"{% endif %}>HOME</a>
     <a href="/scan" {% if request.path == '/scan' %}class="active"{% endif %}>SCANNER</a>
     <a href="/pentest" {% if request.path == '/pentest' %}class="active"{% endif %}>PENTEST</a>
+    <a href="/owasp" {% if request.path == '/owasp' %}class="active"{% endif %}>OWASP</a>
+    <a href="/enumerate" {% if request.path == '/enumerate' %}class="active"{% endif %}>ENUM</a>
     <a href="/results" {% if request.path == '/results' %}class="active"{% endif %}>REPORTS</a>
     {% if session.get('logged_in') %}
     <span style="color:var(--muted);margin-left:24px;font-size:11px;letter-spacing:1px;">
@@ -66,15 +65,14 @@ const BOOT_STEPS = [
   "[*] Initializing network stack...",
   "[+] Scanner engine ready",
   "[+] CVE database connected",
-  "[+] Pentest modules armed",
+  "[+] OWASP modules armed",
+  "[+] Enumeration suite loaded",
   "[+] Auth system verified",
   "[*] Launching interface...",
 ];
-
 const fill = document.getElementById('loader-fill');
 const status = document.getElementById('loader-status');
 let step = 0;
-
 function bootStep() {
   if (step >= BOOT_STEPS.length) {
     setTimeout(() => {
@@ -83,10 +81,10 @@ function bootStep() {
     }, 300);
     return;
   }
-  const pct = Math.round(((step + 1) / BOOT_STEPS.length) * 100);
+  const pct = Math.round(((step+1)/BOOT_STEPS.length)*100);
   fill.style.width = pct + '%';
   const isGood = BOOT_STEPS[step].startsWith('[+]');
-  status.innerHTML = `<span style="color:${isGood ? 'var(--green)' : 'var(--blue)'}">${BOOT_STEPS[step].substring(0,3)}</span>${BOOT_STEPS[step].substring(3)}`;
+  status.innerHTML = `<span style="color:${isGood?'var(--green)':'var(--blue)'}">${BOOT_STEPS[step].substring(0,3)}</span>${BOOT_STEPS[step].substring(3)}`;
   step++;
   setTimeout(bootStep, 280);
 }
@@ -96,29 +94,28 @@ const canvas = document.getElementById('matrix-canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-const cols = Math.floor(canvas.width / 16);
+const cols = Math.floor(canvas.width/16);
 const drops = Array(cols).fill(1);
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:,./<>?';
-
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
 function drawMatrix() {
   ctx.fillStyle = 'rgba(5,8,16,0.05)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle = '#00ff41';
   ctx.font = '14px Courier New';
-  for (let i = 0; i < drops.length; i++) {
-    const c = chars[Math.floor(Math.random() * chars.length)];
-    ctx.fillText(c, i * 16, drops[i] * 16);
-    if (drops[i] * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+  for (let i=0; i<drops.length; i++) {
+    const c = chars[Math.floor(Math.random()*chars.length)];
+    ctx.fillText(c, i*16, drops[i]*16);
+    if (drops[i]*16>canvas.height && Math.random()>0.975) drops[i]=0;
     drops[i]++;
   }
 }
-const matrixInterval = setInterval(drawMatrix, 40);
-setTimeout(() => clearInterval(matrixInterval), 3000);
+const miv = setInterval(drawMatrix, 40);
+setTimeout(() => clearInterval(miv), 3000);
 
 function updateFooterTime() {
   const now = new Date();
   document.getElementById('footer-time').textContent =
-    now.toLocaleTimeString('en-GB', {hour12: false}) +
+    now.toLocaleTimeString('en-GB',{hour12:false}) +
     ' UTC+' + String(-(now.getTimezoneOffset()/60)).padStart(2,'0');
 }
 updateFooterTime();

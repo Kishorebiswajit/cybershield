@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}CyberShield — OWASP Scanner{% endblock %}
+{% block content %}
+
+<div style="display:grid;grid-template-columns:320px 1fr;gap:24px;">
+  <div>
+    <div class="card">
+      <div class="card-title">OWASP Top 10 Scanner</div>
+      <div class="form-group">
+        <label>Target URL</label>
+        <input type="text" id="owasp-url" class="form-control" placeholder="http://target.com">
+      </div>
+      <div class="form-group">
+        <label>Scan mode</label>
+        <select id="owasp-mode" class="form-control">
+          <option value="quick">Quick (fast, demo-ready)</option>
+          <option value="deep">Deep (thorough, slower)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--blue);letter-spacing:1px;margin-bottom:10px;">
+          > CHECKS INCLUDED
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:2;">
+          <span style="color:var(--green)">[+]</span> A01 Broken Access Control<br>
+          <span style="color:var(--green)">[+]</span> A02 Cryptographic Failures<br>
+          <span style="color:var(--green)">[+]</span> A03 Injection (SQLi + XSS)<br>
+          <span style="color:var(--green)">[+]</span> A05 Security Misconfiguration<br>
+          <span style="color:var(--green)">[+]</span> A07 Auth Failures<br>
+          <span style="color:var(--green)">[+]</span> Security Headers (10 checks)
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="runOwasp()">
+        RUN OWASP SCAN
+      </button>
+    </div>
+
+    <div class="card" id="risk-card" style="display:none;">
+      <div class="card-title">OWASP risk rating</div>
+      <div id="owasp-risk-display"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Scan output <span class="cursor" id="owasp-cursor" style="display:none;"></span></div>
+      <div class="progress-bar"><div class="progress-fill" id="owasp-progress"></div></div>
+      <div class="terminal" id="owasp-terminal">[*] Configure target and run OWASP scan...<br></div>
+    </div>
+
+    <div class="card" id="owasp-results" style="display:none;">
+      <div class="card-title">Findings</div>
+      <div class="tabs">
+        <div class="tab active" onclick="showOwaspTab('all')">ALL</div>
+        <div class="tab" onclick="showOwaspTab('critical')">CRITICAL</div>
+        <div class="tab" onclick="showOwaspTab('headers')">HEADERS</div>
+      </div>
+      <div class="tab-content active" id="otab-all">
+        <table class="table">
+          <thead><tr><th>OWASP</th><th>Category</th><th>Severity</th><th>Finding</th></tr></thead>
+          <tbody id="owasp-tbody"></tbody>
+        </table>
+      </div>
+      <div class="tab-content" id="otab-critical">
+        <table class="table">
+          <thead><tr><th>OWASP</th><th>Severity</th><th>Detail</th><th>Evidence</th></tr></thead>
+          <tbody id="owasp-critical-tbody"></tbody>
+        </table>
+      </div>
+      <div class="tab-content" id="otab-headers">
+        <table class="table">
+          <thead><tr><th>Header</th><th>Severity</th><th>Impact</th></tr></thead>
+          <tbody id="owasp-headers-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let owaspData = null;
+
+function owaspLog(msg, cls='') {
+  const t = document.getElementById('owasp-terminal');
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = msg;
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+}
+
+function getBadge(sev) {
+  const s = (sev||'').toUpperCase();
+  const m = {CRITICAL:'badge-critical',HIGH:'badge-high',MEDIUM:'badge-medium',LOW:'badge-low'};
+  return `<span class="badge ${m[s]||'badge-info'}">${s}</span>`;
+}
+
+function showOwaspTab(name) {
+  ['all','critical','headers'].forEach((t,i) => {
+    document.querySelectorAll('.tab')[i+1] && 0;
+  });
+  document.querySelectorAll('#owasp-results .tab').forEach((t,i) => {
+    t.classList.toggle('active', ['all','critical','headers'][i] === name);
+  });
+  document.querySelectorAll('#owasp-results .tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('otab-' + name).classList.add('active');
+}
+
+function runOwasp() {
+  const url = document.getElementById('owasp-url').value.trim();
+  const mode = document.getElementById('owasp-mode').value;
+  if (!url) { alert('Enter a target URL'); return; }
+
+  document.getElementById('owasp-terminal').innerHTML = '';
+  document.getElementById('owasp-results').style.display = 'none';
+  document.getElementById('risk-card').style.display = 'none';
+  document.getElementById('owasp-cursor').style.display = 'inline';
+  document.getElementById('owasp-progress').style.width = '5%';
+
+  owaspLog(`[*] Target: ${url}`, 't-blue');
+  owaspLog(`[*] Mode: ${mode.toUpperCase()}`, 't-blue');
+  owaspLog('[*] Running OWASP Top 10 checks...', 't-green');
+
+  const steps = ['A01 Access Control','A02 Crypto','A03 Injection','A05 Misconfiguration','A07 Auth','Headers'];
+  let s = 0;
+  const iv = setInterval(() => {
+    if (s < steps.length) {
+      owaspLog(`[*] Checking ${steps[s]}...`, 't-muted');
+      document.getElementById('owasp-progress').style.width = ((s+1)/steps.length*85) + '%';
+      s++;
+    } else clearInterval(iv);
+  }, 1200);
+
+  fetch('/api/owasp', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({url, mode})
+  })
+  .then(r => r.json())
+  .then(data => {
+    clearInterval(iv);
+    document.getElementById('owasp-progress').style.width = '100%';
+    document.getElementById('owasp-cursor').style.display = 'none';
+    owaspData = data;
+
+    const f = data.findings || [];
+    owaspLog(`[+] Scan complete — ${f.length} findings`, 't-green');
+    owaspLog(`[+] Risk rating: ${data.risk?.rating || 'N/A'}`, 't-yellow');
+
+    renderOwaspResults(data);
+    renderOwaspRisk(data.risk);
+  })
+  .catch(e => {
+    clearInterval(iv);
+    owaspLog('[!] Error: ' + e, 't-red');
+    document.getElementById('owasp-cursor').style.display = 'none';
+  });
+}
+
+function renderOwaspResults(data) {
+  document.getElementById('owasp-results').style.display = 'block';
+  const findings = data.findings || [];
+
+  const tbody = document.getElementById('owasp-tbody');
+  tbody.innerHTML = '';
+  findings.forEach(f => {
+    tbody.innerHTML += `<tr>
+      <td style="color:var(--blue)">${f.owasp||'-'}</td>
+      <td style="color:var(--text);font-size:12px">${f.category||'-'}</td>
+      <td>${getBadge(f.severity)}</td>
+      <td style="font-size:12px">${f.detail||'-'}</td>
+    </tr>`;
+  });
+  if (!tbody.innerHTML) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--green)">No findings</td></tr>';
+
+  const ctbody = document.getElementById('owasp-critical-tbody');
+  ctbody.innerHTML = '';
+  findings.filter(f => ['CRITICAL','HIGH'].includes(f.severity)).forEach(f => {
+    ctbody.innerHTML += `<tr>
+      <td style="color:var(--blue)">${f.owasp||'-'}</td>
+      <td>${getBadge(f.severity)}</td>
+      <td style="font-size:12px">${f.detail||'-'}</td>
+      <td style="font-size:11px;color:var(--muted)">${f.evidence||'-'}</td>
+    </tr>`;
+  });
+  if (!ctbody.innerHTML) ctbody.innerHTML = '<tr><td colspan="4" style="color:var(--green)">No critical findings</td></tr>';
+
+  const htbody = document.getElementById('owasp-headers-tbody');
+  htbody.innerHTML = '';
+  findings.filter(f => f.category === 'Security Headers').forEach(f => {
+    const hdr = f.detail.replace('Missing header: ', '');
+    htbody.innerHTML += `<tr>
+      <td style="color:var(--blue);font-size:12px">${hdr}</td>
+      <td>${getBadge(f.severity)}</td>
+      <td style="font-size:12px;color:var(--muted)">${f.evidence||'-'}</td>
+    </tr>`;
+  });
+  if (!htbody.innerHTML) htbody.innerHTML = '<tr><td colspan="3" style="color:var(--green)">All headers present</td></tr>';
+}
+
+function renderOwaspRisk(risk) {
+  if (!risk) return;
+  document.getElementById('risk-card').style.display = 'block';
+  const rcolor = {CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',LOW:'var(--green)'}[risk.rating]||'var(--blue)';
+  document.getElementById('owasp-risk-display').innerHTML = `
+    <div style="text-align:center;padding:16px 0;">
+      <div style="font-size:48px;font-weight:bold;color:${rcolor}">${risk.rating}</div>
+      <div style="color:var(--muted);font-size:12px;margin:8px 0">${risk.summary}</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+        <div class="stat-card" style="min-width:70px">
+          <div class="stat-value" style="color:var(--red);font-size:24px">${risk.critical||0}</div>
+          <div class="stat-label">CRITICAL</div>
+        </div>
+        <div class="stat-card" style="min-width:70px">
+          <div class="stat-value" style="color:var(--orange);font-size:24px">${risk.high||0}</div>
+          <div class="stat-label">HIGH</div>
+        </div>
+        <div class="stat-card" style="min-width:70px">
+          <div class="stat-value" style="color:var(--yellow);font-size:24px">${risk.medium||0}</div>
+          <div class="stat-label">MEDIUM</div>
+        </div>
+        <div class="stat-card" style="min-width:70px">
+          <div class="stat-value" style="font-size:24px">${risk.low||0}</div>
+          <div class="stat-label">LOW</div>
+        </div>
+      </div>
+    </div>`;
+}
+</script>
+{% endblock %}

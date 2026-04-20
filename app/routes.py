@@ -4,6 +4,8 @@ from app import socketio, limiter
 from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
 from app.scanner import run_pentest
 from app.scanner import generate_pdf_report, save_json_report, list_reports
+from app.scanner import run_owasp_scan
+from app.scanner import run_enumeration
 from app.auth import login_required
 from app.alerts import check_and_alert
 import threading
@@ -24,6 +26,16 @@ def scan():
 @login_required
 def pentest():
     return render_template('pentest.html')
+
+@main.route('/owasp')
+@login_required
+def owasp():
+    return render_template('owasp.html')
+
+@main.route('/enumerate')
+@login_required
+def enumerate():
+    return render_template('enumerate.html')
 
 @main.route('/results')
 @login_required
@@ -58,13 +70,12 @@ def handle_scan(data):
             safe_emit('scan_log', {'msg': f'[+] Risk level: {risk["level"]}', 'cls': 't-yellow'})
 
             if risk.get("critical", 0) > 0:
-                safe_emit('scan_log', {'msg': '[!] CRITICAL vulns found — sending email alert...', 'cls': 't-red'})
+                safe_emit('scan_log', {'msg': '[!] CRITICAL vulns — sending alert...', 'cls': 't-red'})
                 check_and_alert(results)
                 safe_emit('scan_log', {'msg': '[+] Alert email sent', 'cls': 't-orange'})
 
             safe_emit('scan_progress', {'value': 100})
             safe_emit('scan_complete', results)
-
         except Exception as e:
             safe_emit('scan_log', {'msg': f'[!] Scan error: {str(e)}', 'cls': 't-red'})
             safe_emit('scan_complete', {'error': str(e)})
@@ -72,6 +83,45 @@ def handle_scan(data):
     t = threading.Thread(target=do_scan)
     t.daemon = True
     t.start()
+
+@socketio.on('start_enum')
+def handle_enum(data):
+    target = data.get('target', '')
+    url = data.get('url', '')
+    sid = request.sid
+
+    if not target:
+        emit('enum_log', {'msg': '[!] No target provided', 'cls': 't-red'})
+        return
+
+    def safe_emit(event, data):
+        socketio.emit(event, data, to=sid)
+
+    def do_enum():
+        try:
+            run_enumeration(target, url=url or None, emit=safe_emit)
+        except Exception as e:
+            safe_emit('enum_log', {'msg': f'[!] Error: {str(e)}', 'cls': 't-red'})
+            safe_emit('enum_complete', {'error': str(e)})
+
+    t = threading.Thread(target=do_enum)
+    t.daemon = True
+    t.start()
+
+@main.route('/api/owasp', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def api_owasp():
+    data = request.get_json()
+    url = data.get('url', '')
+    mode = data.get('mode', 'quick')
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+    try:
+        results = run_owasp_scan(url, mode=mode)
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @main.route('/api/pentest', methods=['POST'])
 @login_required
