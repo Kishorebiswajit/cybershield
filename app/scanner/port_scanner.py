@@ -5,6 +5,7 @@ from datetime import datetime
 
 
 def scan_ports_basic(target, port_range="1-1024", emit=None):
+    """Fast port scanning with optimized timeouts and thread pool"""
     open_ports = []
     start_port, end_port = map(int, port_range.split("-"))
     total = end_port - start_port + 1
@@ -15,7 +16,7 @@ def scan_ports_basic(target, port_range="1-1024", emit=None):
     def check_port(port):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
+            sock.settimeout(0.3)  # OPTIMIZED: Reduced from 1s to 0.3s
             result = sock.connect_ex((target, port))
             sock.close()
             if result == 0:
@@ -24,7 +25,8 @@ def scan_ports_basic(target, port_range="1-1024", emit=None):
             pass
         return None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+    # OPTIMIZED: Reduced max_workers from 100 to 50 for better performance
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         results = executor.map(check_port, range(start_port, end_port + 1))
 
     open_ports = sorted([p for p in results if p is not None])
@@ -40,19 +42,21 @@ def scan_ports_basic(target, port_range="1-1024", emit=None):
 
 
 def grab_banner(target, port):
+    """Grab service banners with optimized timeout"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
+        sock.settimeout(0.8)  # OPTIMIZED: Reduced from 2s to 0.8s
         sock.connect((target, port))
         sock.send(b"HEAD / HTTP/1.0\r\n\r\n")
         banner = sock.recv(1024).decode("utf-8", errors="ignore").strip()
         sock.close()
-        return banner
+        return banner[:100]  # OPTIMIZED: Limit banner length
     except:
         return "No banner"
 
 
 def nmap_scan(target, port_range="1-1024", emit=None):
+    """Run Nmap with faster timing template"""
     scanner = nmap.PortScanner()
     results = []
 
@@ -60,7 +64,10 @@ def nmap_scan(target, port_range="1-1024", emit=None):
         emit('scan_log', {'msg': '[*] Running Nmap service detection...', 'cls': 't-blue'})
 
     try:
-        scanner.scan(target, port_range, arguments="-sV -T4")
+        # OPTIMIZED: Changed from -sV -T4 to -sV -T5 for faster scanning
+        # T5 = Insane timing (fastest), T4 = Aggressive
+        scanner.scan(target, port_range, arguments="-sV -T5 --max-retries 1")
+        
         for host in scanner.all_hosts():
             for proto in scanner[host].all_protocols():
                 for port in scanner[host][proto].keys():
@@ -69,8 +76,8 @@ def nmap_scan(target, port_range="1-1024", emit=None):
                         "port": port,
                         "state": info["state"],
                         "service": info["name"],
-                        "version": info.get("version", ""),
-                        "product": info.get("product", ""),
+                        "version": info.get("version", "")[:50],  # OPTIMIZED: Limit version string
+                        "product": info.get("product", "")[:50],  # OPTIMIZED: Limit product string
                     }
                     results.append(entry)
                     if emit:
@@ -90,6 +97,7 @@ def nmap_scan(target, port_range="1-1024", emit=None):
 
 
 def run_full_scan(target, port_range="1-1024", emit=None):
+    """Execute full scan with optimized workflow"""
     scan_data = {
         "target": target,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -108,7 +116,8 @@ def run_full_scan(target, port_range="1-1024", emit=None):
     if emit:
         emit('scan_log', {'msg': '[*] Grabbing service banners...', 'cls': 't-blue'})
 
-    for port in open_ports[:10]:
+    # OPTIMIZED: Only grab banners for top 5 ports instead of 10
+    for port in open_ports[:5]:
         banner = grab_banner(target, port)
         scan_data["banners"][port] = banner
         if emit and banner != "No banner":
