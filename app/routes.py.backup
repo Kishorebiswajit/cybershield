@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory
+from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_socketio import emit
 from app import socketio, limiter
 from app.scanner import run_full_scan, analyze_service_vulns, calculate_risk_score
@@ -178,12 +178,3 @@ def api_cve():
     from app.scanner import search_cves
     cves = search_cves(keyword)
     return jsonify({"results": cves})
-
-@main.route('/reports/<filename>')
-@login_required
-def serve_report(filename):
-    """Serve report files from the reports directory"""
-    try:
-        return send_from_directory('reports', filename)
-    except Exception as e:
-        return jsonify({"error": "Report not found"}), 404
