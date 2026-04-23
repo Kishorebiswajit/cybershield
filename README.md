@@ -21,20 +21,26 @@ real-time scanning, CVE lookup, pentest modules, and PDF report generation.
 - Nmap installed on system
 
 ### Setup
-\`\`\`bash
-git clone https://github.com/yourusername/cybershield.git
+```bash
+git clone https://github.com/yourusername/cybershield.git 
+
 cd cybershield
+
 python -m venv venv
+
 source venv/bin/activate
+
 pip install -r requirements.txt
+
 cp .env.example .env
+
 python run.py
-\`\`\`
+```
 
 ### Docker
-\`\`\`bash
+```bash
 docker-compose up --build
-\`\`\`
+```
 
 ### Default login
 - Username: admin
